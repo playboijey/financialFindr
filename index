@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>financialfindr.app</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --green: #00ff88;
+      --green-dim: rgba(0,255,136,0.12);
+      --green-glow: rgba(0,255,136,0.25);
+      --bg: #080808;
+      --surface: #111111;
+      --surface2: #181818;
+      --border: rgba(0,255,136,0.18);
+      --border-subtle: rgba(255,255,255,0.06);
+      --text: #e8e8e8;
+      --muted: #555;
+      --warn: #ff6b35;
+      --caution: #ffd166;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      font-family: 'Space Mono', monospace;
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,255,136,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,136,0.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── LANDING ── */
+    #landing {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+    }
+
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.6rem;
+      font-weight: 800;
+      color: var(--green);
+      letter-spacing: -2px;
+      margin-bottom: 6px;
+      text-shadow: 0 0 40px var(--green-glow);
+    }
+    .logo span { color: #fff; }
+
+    .tagline {
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 40px;
+    }
+
+    .search-wrapper {
+      position: relative;
+      width: 540px;
+    }
+
+    #search-input {
+      width: 100%;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 18px 130px 18px 22px;
+      font-family: 'Space Mono', monospace;
+      font-size: 1.05rem;
+      color: #fff;
+      outline: none;
+      letter-spacing: 1px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    #search-input::placeholder { color: var(--muted); font-size: 0.85rem; letter-spacing: 1px; }
+    #search-input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px var(--green-dim), 0 0 30px var(--green-glow);
+    }
+
+    #search-btn {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--green);
+      color: #000;
+      border: none;
+      border-radius: 5px;
+      padding: 10px 20px;
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      font-size: 0.78rem;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    #search-btn:hover {
+      background: #00ffaa;
+      box-shadow: 0 0 16px var(--green-glow);
+    }
+
+    .examples {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .examples span { font-size: 0.62rem; color: var(--muted); letter-spacing: 1px; }
+
+    .ex-pill {
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: var(--muted);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 4px;
+      padding: 4px 10px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.15s;
+      background: none;
+      font-family: 'Space Mono', monospace;
+    }
+    .ex-pill:hover { border-color: var(--green); color: var(--green); }
+
+    #error-msg {
+      margin-top: 14px;
+      font-size: 0.7rem;
+      color: var(--warn);
+      letter-spacing: 1px;
+      min-height: 18px;
+      text-align: center;
+    }
+
+    /* ── LOADING ── */
+    #loading-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      background: rgba(8,8,8,0.85);
+      backdrop-filter: blur(6px);
+      flex-direction: column;
+      gap: 16px;
+    }
+    #loading-screen.visible { display: flex; }
+
+    .loader-ticker {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--green);
+      letter-spacing: -1px;
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+    .loader-label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    /* ── OVERLAY BACKDROP ── */
+    #overlay-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    #overlay-backdrop.visible {
+      display: flex;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+    /* ── OVERLAY PANEL ── */
+    #overlay {
+      width: 100%;
+      height: 92vh;
+      background: var(--surface);
+      border-top: 2px solid var(--green);
+      border-radius: 16px 16px 0 0;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp 0.38s cubic-bezier(0.16,1,0.3,1);
+      overflow: hidden;
+      box-shadow: 0 -20px 80px rgba(0,255,136,0.08);
+    }
+    @keyframes slideUp {
+      from { transform: translateY(60px); opacity:0; }
+      to   { transform: translateY(0);    opacity:1; }
+    }
+
+    /* ── OVERLAY HEADER ── */
+    .overlay-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      gap: 16px;
+    }
+
+    .company-info { display: flex; align-items: center; gap: 12px; }
+
+    #company-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    #ticker-badge {
+      background: var(--green);
+      color: #000;
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      font-size: 0.72rem;
+      padding: 3px 10px;
+      border-radius: 3px;
+      letter-spacing: 1.5px;
+    }
+
+    .header-right { display: flex; align-items: center; gap: 16px; }
+
+    .statement-tabs {
+      display: flex;
+      gap: 3px;
+      background: var(--bg);
+      padding: 4px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+      transition: all 0.15s;
+      border: none;
+      background: none;
+      font-family: 'Space Mono', monospace;
+    }
+    .tab-btn.active { background: var(--green); color: #000; }
+
+    #close-btn {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: none;
+      color: var(--muted);
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+      font-family: monospace;
+      flex-shrink: 0;
+    }
+    #close-btn:hover { border-color: var(--green); color: var(--green); }
+
+    /* ── OVERLAY BODY ── */
+    .overlay-body { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── STATEMENT PANEL ── */
+    #statement-panel {
+      flex: 1;
+      padding: 24px 32px;
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+    }
+    #statement-panel::-webkit-scrollbar { width: 4px; }
+    #statement-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .panel-label {
+      font-size: 0.6rem;
+      color: var(--muted);
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .panel-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    .statement-doc {
+      background: var(--surface2);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 28px 32px;
+      font-size: 0.78rem;
+    }
+
+    .doc-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .doc-subtitle { font-size: 0.65rem; color: var(--muted); margin-bottom: 28px; }
+
+    .doc-section-title {
+      font-size: 0.62rem;
+      color: var(--green);
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      padding: 14px 0 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+
+    .doc-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.025);
+      transition: background 0.1s;
+    }
+    .doc-row:hover { background: rgba(255,255,255,0.02); }
+    .doc-row:last-child { border-bottom: none; }
+    .doc-row .row-label { color: #999; font-size: 0.75rem; }
+    .doc-row .row-value { color: #fff; font-weight: 700; font-size: 0.78rem; }
+    .doc-row.subtotal .row-value { color: var(--green); }
+    .doc-row.grand-total .row-label { color: #fff; font-weight: 700; }
+    .doc-row.grand-total .row-value { color: var(--green); font-size: 0.88rem; }
+
+    /* ── RATIO PANEL ── */
+    #ratio-panel {
+      width: 290px;
+      flex-shrink: 0;
+      padding: 24px 18px;
+      overflow-y: auto;
+      background: var(--bg);
+    }
+    #ratio-panel::-webkit-scrollbar { width: 4px; }
+    #ratio-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .ratio-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin-bottom: 12px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s;
+    }
+    .ratio-card:hover { transform: translateY(-1px); }
+    .ratio-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+    .ratio-card.good::before { background: var(--green); }
+    .ratio-card.good { border-color: rgba(0,255,136,0.25); }
+    .ratio-card.warn::before { background: var(--warn); }
+    .ratio-card.warn { border-color: rgba(255,107,53,0.25); }
+    .ratio-card.neutral::before { background: var(--caution); }
+    .ratio-card.neutral { border-color: rgba(255,209,102,0.25); }
+
+    .ratio-name { font-size: 0.58rem; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+
+    .ratio-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.1rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+    .ratio-card.good .ratio-value { color: var(--green); }
+    .ratio-card.warn .ratio-value { color: var(--warn); }
+    .ratio-card.neutral .ratio-value { color: var(--caution); }
+
+    .ratio-desc { font-size: 0.62rem; color: var(--muted); line-height: 1.6; }
+
+    .ratio-pill {
+      display: inline-block;
+      margin-top: 10px;
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 3px 8px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+    .ratio-card.good .ratio-pill { background: rgba(0,255,136,0.1); color: var(--green); }
+    .ratio-card.warn .ratio-pill { background: rgba(255,107,53,0.1); color: var(--warn); }
+    .ratio-card.neutral .ratio-pill { background: rgba(255,209,102,0.1); color: var(--caution); }
+
+    /* ── FOOTER ── */
+    .overlay-footer {
+      padding: 11px 28px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .footer-meta { font-size: 0.6rem; color: var(--muted); }
+    .footer-meta span { color: var(--green); }
+
+    .download-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 4px;
+      padding: 7px 16px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.5px;
+    }
+    .download-btn:hover { border-color: var(--green); color: var(--green); }
+  </style>
+</head>
+<body>
+
+  <!-- LANDING -->
+  <div id="landing">
+    <div class="logo">financial<span>findr</span>.app</div>
+    <div class="tagline">Instant financial statements, one ticker away</div>
+    <div class="search-wrapper">
+      <input id="search-input" type="text" placeholder="Enter ticker... AAPL, TSLA, MSFT" maxlength="10" autocomplete="off" spellcheck="false" />
+      <button id="search-btn">SEARCH →</button>
+    </div>
+    <div class="examples">
+      <span>Try:</span>
+      <button class="ex-pill" onclick="quickSearch('AAPL')">AAPL</button>
+      <button class="ex-pill" onclick="quickSearch('TSLA')">TSLA</button>
+      <button class="ex-pill" onclick="quickSearch('MSFT')">MSFT</button>
+      <button class="ex-pill" onclick="quickSearch('NVDA')">NVDA</button>
+      <button class="ex-pill" onclick="quickSearch('AMZN')">AMZN</button>
+    </div>
+    <div id="error-msg"></div>
+  </div>
+
+  <!-- LOADING -->
+  <div id="loading-screen">
+    <div class="loader-ticker" id="loading-ticker">—</div>
+    <div class="loader-label">Fetching financial data</div>
+  </div>
+
+  <!-- OVERLAY -->
+  <div id="overlay-backdrop">
+    <div id="overlay">
+
+      <div class="overlay-header">
+        <div class="company-info">
+          <div id="company-name">—</div>
+          <div id="ticker-badge">—</div>
+        </div>
+        <div class="header-right">
+          <div class="statement-tabs">
+            <button class="tab-btn active" data-tab="income">Income</button>
+            <button class="tab-btn" data-tab="balance">Balance Sheet</button>
+            <button class="tab-btn" data-tab="cashflow">Cash Flow</button>
+          </div>
+          <button id="close-btn">✕</button>
+        </div>
+      </div>
+
+      <div class="overlay-body">
+        <div id="statement-panel">
+          <div class="panel-label">Financial Statement</div>
+          <div id="statement-content"></div>
+        </div>
+        <div id="ratio-panel">
+          <div class="panel-label" style="margin-bottom:18px;">Key Ratios</div>
+          <div id="ratio-content"></div>
+        </div>
+      </div>
+
+      <div class="overlay-footer">
+        <div class="footer-meta">Source: <span>Financial Modeling Prep</span> · Data may be delayed</div>
+        <button class="download-btn" id="download-btn">↓ Download PDF</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let currentData = { income: null, balance: null, cashflow: null, profile: null };
+    let currentTicker = "";
+
+    // ── FORMAT HELPERS ──
+    const fmt = (val) => {
+      if (val === undefined || val === null || val === 0) return "—";
+      const n = parseFloat(val);
+      if (isNaN(n)) return "—";
+      const abs = Math.abs(n), sign = n < 0 ? "-" : "";
+      if (abs >= 1e12) return `${sign}$${(abs/1e12).toFixed(2)}T`;
+      if (abs >= 1e9)  return `${sign}$${(abs/1e9).toFixed(2)}B`;
+      if (abs >= 1e6)  return `${sign}$${(abs/1e6).toFixed(2)}M`;
+      if (abs >= 1e3)  return `${sign}$${(abs/1e3).toFixed(1)}K`;
+      return `${sign}$${n.toFixed(2)}`;
+    };
+
+    const fmtR = (val, d = 2) => {
+      if (val === null || val === undefined || isNaN(val) || !isFinite(val)) return "N/A";
+      return parseFloat(val).toFixed(d);
+    };
+
+    const row = (label, value, cls = "") =>
+      `<div class="doc-row ${cls}"><span class="row-label">${label}</span><span class="row-value">${typeof value === "string" && value.startsWith("$") ? value : fmt(value)}</span></div>`;
+
+    const section = (title, rows) =>
+      `<div class="doc-section"><div class="doc-section-title">${title}</div>${rows}</div>`;
+
+    // ── SEARCH ──
+    document.getElementById("search-btn").addEventListener("click", doSearch);
+    document.getElementById("search-input").addEventListener("keydown", e => { if (e.key === "Enter") doSearch(); });
+
+    function quickSearch(ticker) {
+      document.getElementById("search-input").value = ticker;
+      doSearch();
+    }
+
+    async function doSearch() {
+      const ticker = document.getElementById("search-input").value.trim().toUpperCase();
+      if (!ticker) return;
+      showError("");
+      showLoading(ticker);
+
+      try {
+        const res = await fetch(`/api/finance?ticker=${encodeURIComponent(ticker)}&type=all`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          hideLoading();
+          showError(data.error || "Ticker not found or API limit reached.");
+          return;
+        }
+
+        currentData = data;
+        currentTicker = ticker;
+        hideLoading();
+        openOverlay(ticker);
+
+      } catch (err) {
+        hideLoading();
+        showError("Network error — check your connection.");
+        console.error(err);
+      }
+    }
+
+    // ── OVERLAY ──
+    function openOverlay(ticker) {
+      const p = currentData.profile || {};
+      document.getElementById("company-name").textContent = p.companyName || ticker;
+      document.getElementById("ticker-badge").textContent = ticker;
+      document.getElementById("overlay-backdrop").classList.add("visible");
+      setTab("income");
+    }
+
+    document.getElementById("close-btn").addEventListener("click", closeOverlay);
+    document.getElementById("overlay-backdrop").addEventListener("click", e => {
+      if (e.target === document.getElementById("overlay-backdrop")) closeOverlay();
+    });
+    document.addEventListener("keydown", e => { if (e.key === "Escape") closeOverlay(); });
+
+    function closeOverlay() {
+      document.getElementById("overlay-backdrop").classList.remove("visible");
+    }
+
+    // ── TABS ──
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => setTab(btn.dataset.tab));
+    });
+
+    function setTab(tab) {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+      renderStatement(tab);
+      renderRatios();
+    }
+
+    // ── RENDER STATEMENT ──
+    function renderStatement(tab) {
+      const el = document.getElementById("statement-content");
+      const i = currentData.income || {};
+      const b = currentData.balance || {};
+      const c = currentData.cashflow || {};
+      const period = i.date || b.date || "—";
+      const currency = i.reportedCurrency || "USD";
+      let html = "";
+
+      if (tab === "income") {
+        html = `<div class="statement-doc">
+          <div class="doc-title">Income Statement</div>
+          <div class="doc-subtitle">Period ending ${period} · ${currency}</div>
+          ${section("Revenue", row("Total Revenue", i.revenue, "subtotal"))}
+          ${section("Profitability",
+            row("Gross Profit", i.grossProfit) +
+            row("Operating Income", i.operatingIncome) +
+            row("EBITDA", i.ebitda) +
+            row("Net Income", i.netIncome, "grand-total")
+          )}
+          ${section("Expenses",
+            row("Cost of Revenue", i.costOfRevenue) +
+            row("R&D Expenses", i.researchAndDevelopmentExpenses) +
+            row("SG&A Expenses", i.sellingGeneralAndAdministrativeExpenses) +
+            row("Interest Expense", i.interestExpense) +
+            row("Income Tax Expense", i.incomeTaxExpense)
+          )}
+          ${section("Per Share",
+            row("EPS (Basic)", i.eps ? `$${parseFloat(i.eps).toFixed(2)}` : null) +
+            row("EPS (Diluted)", i.epsdiluted ? `$${parseFloat(i.epsdiluted).toFixed(2)}` : null) +
+            row("Shares Outstanding", i.weightedAverageShsOut)
+          )}
+        </div>`;
+
+      } else if (tab === "balance") {
+        html = `<div class="statement-doc">
+          <div class="doc-title">Balance Sheet</div>
+          <div class="doc-subtitle">Period ending ${period} · ${currency}</div>
+          ${section("Assets",
+            row("Cash & Equivalents", b.cashAndCashEquivalents) +
+            row("Short Term Investments", b.shortTermInvestments) +
+            row("Net Receivables", b.netReceivables) +
+            row("Inventory", b.inventory) +
+            row("Total Current Assets", b.totalCurrentAssets, "subtotal") +
+            row("Property, Plant & Equipment", b.propertyPlantEquipmentNet) +
+            row("Goodwill", b.goodwill) +
+            row("Total Assets", b.totalAssets, "grand-total")
+          )}
+          ${section("Liabilities",
+            row("Accounts Payable", b.accountPayables) +
+            row("Short Term Debt", b.shortTermDebt) +
+            row("Total Current Liabilities", b.totalCurrentLiabilities, "subtotal") +
+            row("Long Term Debt", b.longTermDebt) +
+            row("Total Liabilities", b.totalLiabilities, "grand-total")
+          )}
+          ${section("Equity",
+            row("Retained Earnings", b.retainedEarnings) +
+            row("Total Equity", b.totalStockholdersEquity, "grand-total")
+          )}
+        </div>`;
+
+      } else if (tab === "cashflow") {
+        html = `<div class="statement-doc">
+          <div class="doc-title">Cash Flow Statement</div>
+          <div class="doc-subtitle">Period ending ${period} · ${currency}</div>
+          ${section("Operating Activities",
+            row("Net Income", c.netIncome) +
+            row("Depreciation & Amortization", c.depreciationAndAmortization) +
+            row("Changes in Working Capital", c.changeInWorkingCapital) +
+            row("Operating Cash Flow", c.operatingCashFlow, "grand-total")
+          )}
+          ${section("Investing Activities",
+            row("Capital Expenditures", c.capitalExpenditure) +
+            row("Acquisitions", c.acquisitionsNet) +
+            row("Investing Cash Flow", c.netCashUsedForInvestingActivites, "subtotal")
+          )}
+          ${section("Financing Activities",
+            row("Debt Repayment", c.debtRepayment) +
+            row("Share Repurchases", c.commonStockRepurchased) +
+            row("Dividends Paid", c.dividendsPaid) +
+            row("Financing Cash Flow", c.netCashUsedProvidedByFinancingActivities, "subtotal")
+          )}
+          ${section("Summary",
+            row("Free Cash Flow", c.freeCashFlow, "grand-total") +
+            row("Net Change in Cash", c.netChangeInCash)
+          )}
+        </div>`;
+      }
+
+      el.innerHTML = html;
+    }
+
+    // ── RENDER RATIOS ──
+    function renderRatios() {
+      const el = document.getElementById("ratio-content");
+      const i = currentData.income || {};
+      const b = currentData.balance || {};
+
+      const totalAssets = b.totalAssets;
+      const totalLiabilities = b.totalLiabilities;
+      const totalEquity = b.totalStockholdersEquity;
+      const netIncome = i.netIncome;
+      const revenue = i.revenue;
+
+      const debtToAssets = (totalLiabilities && totalAssets) ? totalLiabilities / totalAssets : null;
+      const assetTurnover = (revenue && totalAssets) ? revenue / totalAssets : null;
+      const roe = (netIncome && totalEquity) ? (netIncome / totalEquity) * 100 : null;
+      const roa = (netIncome && totalAssets) ? (netIncome / totalAssets) * 100 : null;
+
+      const ratios = [
+        {
+          name: "Debt-to-Assets",
+          value: debtToAssets !== null ? fmtR(debtToAssets) : "N/A",
+          desc: "Proportion of assets financed by debt. Lower generally means less financial risk.",
+          pill: debtToAssets === null ? "N/A" : debtToAssets < 0.4 ? "Healthy" : debtToAssets < 0.7 ? "Moderate" : "High Risk",
+          cls: debtToAssets === null ? "neutral" : debtToAssets < 0.4 ? "good" : debtToAssets < 0.7 ? "neutral" : "warn"
+        },
+        {
+          name: "Asset Turnover",
+          value: assetTurnover !== null ? fmtR(assetTurnover) + "x" : "N/A",
+          desc: "How efficiently the company generates revenue from its assets.",
+          pill: assetTurnover === null ? "N/A" : assetTurnover > 1 ? "Efficient" : assetTurnover > 0.5 ? "Average" : "Low",
+          cls: assetTurnover === null ? "neutral" : assetTurnover > 1 ? "good" : assetTurnover > 0.5 ? "neutral" : "warn"
+        },
+        {
+          name: "Return on Equity",
+          value: roe !== null ? fmtR(roe) + "%" : "N/A",
+          desc: "Net income generated per dollar of shareholder equity. Above 15% is considered strong.",
+          pill: roe === null ? "N/A" : roe > 15 ? "Strong" : roe > 8 ? "Moderate" : "Weak",
+          cls: roe === null ? "neutral" : roe > 15 ? "good" : roe > 8 ? "neutral" : "warn"
+        },
+        {
+          name: "Return on Assets",
+          value: roa !== null ? fmtR(roa) + "%" : "N/A",
+          desc: "How profitably the company uses its total asset base to generate earnings.",
+          pill: roa === null ? "N/A" : roa > 5 ? "Strong" : roa > 2 ? "Moderate" : "Weak",
+          cls: roa === null ? "neutral" : roa > 5 ? "good" : roa > 2 ? "neutral" : "warn"
+        }
+      ];
+
+      el.innerHTML = ratios.map(r => `
+        <div class="ratio-card ${r.cls}">
+          <div class="ratio-name">${r.name}</div>
+          <div class="ratio-value">${r.value}</div>
+          <div class="ratio-desc">${r.desc}</div>
+          <div class="ratio-pill">${r.pill}</div>
+        </div>
+      `).join("");
+    }
+
+    // ── DOWNLOAD ──
+    document.getElementById("download-btn").addEventListener("click", () => {
+      window.open(`/api/finance?ticker=${encodeURIComponent(currentTicker)}&type=pdf`, "_blank");
+    });
+
+    // ── LOADING HELPERS ──
+    function showLoading(ticker) {
+      document.getElementById("loading-ticker").textContent = ticker;
+      document.getElementById("loading-screen").classList.add("visible");
+    }
+    function hideLoading() {
+      document.getElementById("loading-screen").classList.remove("visible");
+    }
+    function showError(msg) {
+      document.getElementById("error-msg").textContent = msg;
+    }
+  </script>
+</body>
+</html>
