@@ -146,7 +146,7 @@ def add_cors_headers(response: Any) -> Any:
     return response
 
 
-@app.route("/", methods=["GET", "OPTIONS"])
+@app.route("/api/analyze", methods=["GET", "OPTIONS"])
 def analyze() -> Any:
     if request.method == "OPTIONS":
         return ("", 200)
