@@ -119,4 +119,63 @@ def calculate_moving_averages(history: pd.DataFrame) -> dict[str, float | str]:
     if len(close_prices) < 50:
         raise ValueError("Not enough historical price data to calculate moving averages.")
 
-    ma_20 = safe_float(close_prices.rolling(window=20).mean
+    ma_20 = safe_float(close_prices.rolling(window=20).mean().iloc[-1])
+    ma_50 = safe_float(close_prices.rolling(window=50).mean().iloc[-1])
+
+    if ma_20 is None or ma_50 is None:
+        raise ValueError("Unable to calculate moving averages from historical price data.")
+
+    signal = "Hold"
+    if ma_20 > ma_50:
+        signal = "Buy"
+    elif ma_20 < ma_50:
+        signal = "Sell"
+
+    return {
+        "20_day": round(ma_20, 2),
+        "50_day": round(ma_50, 2),
+        "signal": signal,
+    }
+
+
+@app.after_request
+def add_cors_headers(response: Any) -> Any:
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
+
+@app.route("/", methods=["GET", "OPTIONS"])
+def analyze() -> Any:
+    if request.method == "OPTIONS":
+        return ("", 200)
+
+    ticker_symbol = request.args.get("ticker", "").strip().upper()
+    if not ticker_symbol:
+        return jsonify({"error": "Ticker query parameter is required."}), 400
+
+    try:
+        data = fetch_financial_data(ticker_symbol)
+        ratios = calculate_ratios(data["income_statement"], data["balance_sheet"])
+        moving_average_data = calculate_moving_averages(data["history"])
+
+        return jsonify(
+            {
+                "ticker": ticker_symbol,
+                "ratios": ratios,
+                "moving_averages": {
+                    "20_day": moving_average_data["20_day"],
+                    "50_day": moving_average_data["50_day"],
+                },
+                "signal": moving_average_data["signal"],
+            }
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc), "ticker": ticker_symbol}), 404
+    except Exception as exc:
+        return jsonify({"error": f"Unexpected server error: {exc}", "ticker": ticker_symbol}), 500
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
