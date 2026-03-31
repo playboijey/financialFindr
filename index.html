@@ -394,11 +394,28 @@
 
       try {
         const [analysisResponse, filingsResponse] = await Promise.all([
-          fetch(`/api/analyze?ticker=${encodeURIComponent(ticker)}`),
-          fetch(`/api/filings?ticker=${encodeURIComponent(ticker)}`)
-        ]);
-        const analysisData = await analysisResponse.json();
-        const filingsData = await filingsResponse.json();
+  fetch(`/api/analyze?ticker=${encodeURIComponent(ticker)}`),
+  fetch(`/api/filings?ticker=${encodeURIComponent(ticker)}`)
+]);
+
+const analysisText = await analysisResponse.text();
+const filingsText = await filingsResponse.text();
+
+let analysisData;
+let filingsData;
+
+try {
+  analysisData = JSON.parse(analysisText);
+} catch {
+  throw new Error(`Analyze endpoint returned non-JSON: ${analysisText.slice(0, 120)}`);
+}
+
+try {
+  filingsData = JSON.parse(filingsText);
+} catch {
+  throw new Error(`Filings endpoint returned non-JSON: ${filingsText.slice(0, 120)}`);
+}
+
 
         if (!analysisResponse.ok) {
           throw new Error(analysisData.error || "Unable to analyze ticker.");
