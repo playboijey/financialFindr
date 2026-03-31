@@ -66,7 +66,7 @@ Deploy steps:
 1. Push the repo to GitHub.
 2. Import the project into Vercel.
 3. Use the `Other` framework preset if prompted.
-4. Deploy.
+4. Deploy it.
 
 ## How It Works
 
